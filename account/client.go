@@ -5,6 +5,7 @@ import (
 
 	pb "github.com/meharifitih/go-grpc-graphql-microservice/account/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
@@ -13,7 +14,8 @@ type Client struct {
 }
 
 func NewClient(url string) (*Client, error) {
-	conn, err := grpc.NewClient(url, grpc.WithTransportCredentials(nil))
+	// conn, err := grpc.NewClient(url, grpc.WithInsecure())
+	conn, err := grpc.NewClient(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
