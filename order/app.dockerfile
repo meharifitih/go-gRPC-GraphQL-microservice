@@ -17,10 +17,10 @@ RUN go mod download
 COPY vendor ./vendor
 
 # Copy your source code
-COPY account ./account
+COPY order ./order
 
 # Build the binary
-RUN go build -mod=vendor -o /bin/app ./account/cmd/account
+RUN go build -mod=vendor -o /bin/app ./order/cmd/order
 
 # ---- Runtime Stage ----
 FROM alpine:3.21
