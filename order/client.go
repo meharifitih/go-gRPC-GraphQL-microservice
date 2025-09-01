@@ -10,12 +10,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type client struct {
+type Client struct {
 	conn    *grpc.ClientConn
 	service pb.OrderServiceClient
 }
 
-func NewClient(url string) (*client, error) {
+func NewClient(url string) (*Client, error) {
 	conn, err := grpc.NewClient(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -23,17 +23,17 @@ func NewClient(url string) (*client, error) {
 
 	c := pb.NewOrderServiceClient(conn)
 
-	return &client{
+	return &Client{
 		conn:    conn,
 		service: c,
 	}, nil
 }
 
-func (c *client) Close() {
+func (c *Client) Close() {
 	c.conn.Close()
 }
 
-func (c *client) PostOrder(ctx context.Context, accountId string, products []OrderedProduct) (*Order, error) {
+func (c *Client) PostOrder(ctx context.Context, accountId string, products []OrderedProduct) (*Order, error) {
 	protoProducts := []*pb.PostOrderRequest_OrderProduct{}
 
 	for _, p := range products {
@@ -64,7 +64,7 @@ func (c *client) PostOrder(ctx context.Context, accountId string, products []Ord
 	}, nil
 }
 
-func (c *client) GetOrdersForAccount(ctx context.Context, accountID string) ([]Order, error) {
+func (c *Client) GetOrdersForAccount(ctx context.Context, accountID string) ([]Order, error) {
 	res, err := c.service.GetOrdersForAccount(ctx, &pb.GetOrdersForAccountRequest{AccountId: accountID})
 	if err != nil {
 		log.Println(err)
