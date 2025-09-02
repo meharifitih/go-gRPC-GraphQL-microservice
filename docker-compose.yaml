@@ -1,75 +1,135 @@
-version: "3.7"
+
 
 services:
   account:
     build:
       context: .
       dockerfile: ./account/app.dockerfile
+    container_name: account-service
     depends_on:
       - account_db
     environment:
-      DATABASE_URL: postgres://mehari:123456@account_db/mehari?sslmode=disable
-    restart: on-failure
+      DATABASE_URL: postgres://mehari:123456@account_db:5432/mehari?sslmode=disable
+    networks:
+      - microservice-network
+    restart: unless-stopped
 
   catalog:
     build:
       context: .
       dockerfile: ./catalog/app.dockerfile
+    container_name: catalog-service
     depends_on:
       - catalog_db
     environment:
       DATABASE_URL: http://catalog_db:9200
-    restart: on-failure
+    networks:
+      - microservice-network
+    restart: unless-stopped
 
   order:
     build:
       context: .
       dockerfile: ./order/app.dockerfile
+    container_name: order-service
     depends_on:
       - order_db
+      - account
+      - catalog
     environment:
-      DATABASE_URL: postgres://mehari:123456@order_db/mehari?sslmode=disable
+      DATABASE_URL: postgres://mehari:123456@order_db:5432/mehari?sslmode=disable
       ACCOUNT_SERVICE_URL: account:8080
       CATALOG_SERVICE_URL: catalog:8080
-    restart: on-failure
+    networks:
+      - microservice-network
+    restart: unless-stopped
 
   graphql:
     build:
       context: .
       dockerfile: ./graphql/app.dockerfile
+    container_name: graphql-gateway
     ports:
-      - 8000:8080
+      - "8000:8080"
     depends_on:
       - account
       - catalog
+      - order
     environment:
       ACCOUNT_SERVICE_URL: account:8080
       CATALOG_SERVICE_URL: catalog:8080
       ORDER_SERVICE_URL: order:8080
-    restart: on-failure
+    networks:
+      - microservice-network
+    restart: unless-stopped
 
   account_db:
     build:
       context: ./account
       dockerfile: ./db.dockerfile
+    container_name: account-postgres
     environment:
       POSTGRES_DB: mehari
       POSTGRES_USER: mehari
       POSTGRES_PASSWORD: 123456
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - account_data:/var/lib/postgresql/data
+    networks:
+      - microservice-network
     restart: unless-stopped
 
   catalog_db:
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.2.4
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    container_name: catalog-elasticsearch
     environment:
-      ES_JAVA_OPTS: -Xms1g -Xmx1g
-      discovery.type: single-node
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - bootstrap.memory_lock=true
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - microservice-network
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
 
   order_db:
     build:
       context: ./order
       dockerfile: ./db.dockerfile
+    container_name: order-postgres
     environment:
       POSTGRES_DB: mehari
       POSTGRES_USER: mehari
       POSTGRES_PASSWORD: 123456
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - order_data:/var/lib/postgresql/data
+    networks:
+      - microservice-network
     restart: unless-stopped
+
+networks:
+  microservice-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  account_data:
+    driver: local
+  order_data:
+    driver: local
+  elasticsearch_data:
+    driver: local

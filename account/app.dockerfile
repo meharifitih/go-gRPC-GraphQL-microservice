@@ -1,41 +1,14 @@
-# ---- Build Stage ----
-FROM golang:1.23-alpine AS build
-
-# Install build dependencies
-RUN apk add --no-cache build-base ca-certificates
-
-# Set working directory
+FROM golang:1.24-alpine AS build
+RUN apk --no-cache add gcc g++ make ca-certificates
 WORKDIR /app
-
-# Copy go module files first for caching
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
+COPY . .
+RUN CGO_ENABLED=1 go build -o /app/account ./account/cmd/account
 
-# Copy vendor folder if you’re vendoring (optional)
-COPY vendor ./vendor
-
-# Copy your source code
-COPY account ./account
-
-# Build the binary
-RUN go build -mod=vendor -o /bin/app ./account/cmd/account
-
-# ---- Runtime Stage ----
-FROM alpine:3.21
-
-# Add CA certificates for HTTPS
-RUN apk add --no-cache ca-certificates
-
-# Set working dir
-WORKDIR /usr/bin
-
-# Copy the built binary from the build stage
-COPY --from=build /bin/app .
-
-# Expose the service port
+FROM alpine:3.19
+RUN apk --no-cache add ca-certificates netcat-openbsd
+WORKDIR /app
+COPY --from=build /app/account .
 EXPOSE 8080
-
-# Run the app
-CMD ["./app"]
+CMD ["./account"]

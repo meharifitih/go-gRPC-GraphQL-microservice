@@ -36,5 +36,5 @@ func main() {
 
 	log.Println("Listening on port 8080...")
 	s := order.NewOrderService(r)
-	log.Fatal(order.ListenGRPC(s, cfg.AccountServiceURL, cfg.CatalogServiceURL, 80808))
+	log.Fatal(order.ListenGRPC(s, cfg.AccountServiceURL, cfg.CatalogServiceURL, 8080))
 }
